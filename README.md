@@ -69,6 +69,29 @@ python3 -m pip install .
 python3 -m pip install "git+https://github.com/<user>/<repo>.git"
 ```
 
+## Публикация на GitHub
+
+1. Создайте пустой репозиторий на GitHub без `README`, `.gitignore` и лицензии.
+2. Привяжите локальный репозиторий:
+
+```bash
+git remote add origin git@github.com:<user>/<repo>.git
+```
+
+Или через HTTPS:
+
+```bash
+git remote add origin https://github.com/<user>/<repo>.git
+```
+
+3. Отправьте текущую ветку:
+
+```bash
+git push -u origin main
+```
+
+После первого `push` workflow из `.github/workflows/ci.yml` начнет автоматически проверять проект на `push` и `pull request`.
+
 ## Использование
 
 ```text
@@ -101,3 +124,7 @@ usage: exif_touch.py [-h] [-r] [--dry-run] [--all-files] [directory]
 - если `exiftool` не установлен, утилита только сообщит об этом и завершится
 - на Unix-подобных системах переносимо меняются только `atime` и `mtime`
 - не у всех файлов есть корректная дата съёмки в метаданных, такие файлы будут пропущены
+
+## Лицензия
+
+Проект распространяется по лицензии MIT. См. файл `LICENSE`.
