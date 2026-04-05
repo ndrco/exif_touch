@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "exif-touch"
+version = "0.1.0"
+description = "Set file timestamps from EXIF and QuickTime metadata via exiftool."
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["exif", "metadata", "photos", "timestamps", "cli"]
+
+[project.scripts]
+exif-touch = "exif_touch:main"
+
+[tool.setuptools]
+py-modules = ["exif_touch"]
