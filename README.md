@@ -1,5 +1,8 @@
 # exif-touch
 
+[![CI](https://github.com/ndrco/exif_touch/actions/workflows/ci.yml/badge.svg)](https://github.com/ndrco/exif_touch/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ndrco/exif_touch)](https://github.com/ndrco/exif_touch/releases)
+
 `exif-touch` is a small Python CLI utility that sets file timestamps from capture dates stored in metadata via `exiftool`.
 
 It is useful for photo and video archives when file dates were changed by copying, exporting from messaging apps, or moving files between devices.
