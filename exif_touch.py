@@ -19,8 +19,8 @@ SUPPORTED_EXTENSIONS = {
     ".mov",
 }
 
-# В каком порядке пробуем брать дату из exiftool.
-# Сначала наиболее "родные" поля съёмки, потом более общие/контейнерные.
+# The order in which we try date fields from exiftool.
+# Native capture timestamps come first, then more generic/container-level fields.
 EXIFTOOL_DATE_TAGS = [
     "DateTimeOriginal",
     "SubSecDateTimeOriginal",
@@ -36,8 +36,8 @@ EXIFTOOL_DATE_TAGS = [
 
 def parse_dt(value: str) -> datetime | None:
     """
-    Пытается распарсить дату из разных форматов, которые часто возвращает exiftool.
-    Поддерживает, например:
+    Try to parse dates from formats commonly returned by exiftool.
+    Supported examples:
       2024:03:17 12:34:56
       2024:03:17 12:34:56+03:00
       2024:03:17 12:34:56.12+03:00
@@ -49,7 +49,7 @@ def parse_dt(value: str) -> datetime | None:
 
     s = str(value).strip()
 
-    # exiftool иногда возвращает timezone без двоеточия: +0300
+    # exiftool sometimes returns a timezone without a colon: +0300
     if re.search(r"[+-]\d{4}$", s):
         s = s[:-5] + s[-5:-2] + ":" + s[-2:]
 
@@ -57,7 +57,7 @@ def parse_dt(value: str) -> datetime | None:
     if s.endswith("Z"):
         s = s[:-1] + "+00:00"
 
-    # Самые частые форматы EXIF/QuickTime
+    # Common EXIF and QuickTime formats
     formats = (
         "%Y:%m:%d %H:%M:%S",
         "%Y:%m:%d %H:%M:%S%z",
@@ -79,7 +79,7 @@ def parse_dt(value: str) -> datetime | None:
         except ValueError:
             pass
 
-    # Последний шанс: fromisoformat
+    # Last chance: fromisoformat
     try:
         return datetime.fromisoformat(s)
     except ValueError:
@@ -96,8 +96,8 @@ def find_key_case_insensitive(data: dict, wanted_key: str) -> str | None:
 
 def get_datetime_from_exiftool(file_path: Path) -> tuple[datetime | None, str]:
     """
-    Возвращает (datetime, source_tag).
-    Для чтения использует exiftool -j.
+    Return (datetime, source_tag).
+    Read metadata via exiftool -j.
     """
     if shutil.which("exiftool") is None:
         return None, "exiftool not found"
@@ -138,7 +138,7 @@ def get_datetime_from_exiftool(file_path: Path) -> tuple[datetime | None, str]:
     return None, "no date tags"
 
 
-# ---------- Работа со временем файла ----------
+# ---------- File timestamp handling ----------
 
 if os.name == "nt":
     import ctypes
@@ -209,7 +209,7 @@ def set_windows_all_times(file_path: Path, dt: datetime) -> None:
     )
 
     if handle == INVALID_HANDLE_VALUE:
-        raise OSError(f"Не удалось открыть файл для изменения времени: {file_path}")
+        raise OSError(f"Failed to open file for timestamp update: {file_path}")
 
     try:
         ok = SetFileTime(
@@ -256,53 +256,53 @@ def is_supported_file(file_path: Path, all_files: bool) -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Ставит дату файла по метаданным через exiftool (JPG/HEIC/MOV и др.)."
+        description="Set file timestamps from metadata via exiftool (JPG/HEIC/MOV and more)."
     )
     parser.add_argument(
         "directory",
         nargs="?",
         default=Path.cwd(),
         type=Path,
-        help="Каталог с файлами (по умолчанию — текущий каталог)",
+        help="Directory with files (defaults to the current directory)",
     )
     parser.add_argument(
         "-r", "--recursive",
         action="store_true",
-        help="Обходить подкаталоги рекурсивно",
+        help="Scan subdirectories recursively",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Только показать, что будет изменено, без записи",
+        help="Show planned changes without writing anything",
     )
     parser.add_argument(
         "--all-files",
         action="store_true",
-        help="Пробовать все файлы, а не только известные расширения",
+        help="Try every file, not only known extensions",
     )
 
     args = parser.parse_args()
     directory = args.directory
 
     if not directory.exists():
-        print(f"Каталог не найден: {directory}")
+        print(f"Directory not found: {directory}")
         return
 
     if not directory.is_dir():
-        print(f"Это не каталог: {directory}")
+        print(f"Not a directory: {directory}")
         return
 
     if shutil.which("exiftool") is None:
-        print("Ошибка: exiftool не найден в PATH.")
-        print("Установи его, например, так:")
+        print("Error: exiftool was not found in PATH.")
+        print("Install it, for example:")
         print("  sudo apt install -y libimage-exiftool-perl")
         return
 
-    print(f"Рабочий каталог: {directory.resolve()}")
+    print(f"Working directory: {directory.resolve()}")
 
     if os.name != "nt":
-        print("[INFO] На этой платформе переносимо меняется только atime/mtime.")
-        print("[INFO] Настоящую creation time скрипт меняет только на Windows.")
+        print("[INFO] Only atime/mtime can be updated portably on this platform.")
+        print("[INFO] Real creation time is only updated by the script on Windows.")
 
     processed = 0
     updated = 0
@@ -316,7 +316,7 @@ def main() -> None:
         dt, source = get_datetime_from_exiftool(file_path)
 
         if dt is None:
-            print(f"[SKIP] {file_path} -> дата не найдена ({source})")
+            print(f"[SKIP] {file_path} -> no usable date found ({source})")
             skipped += 1
             continue
 
@@ -325,13 +325,13 @@ def main() -> None:
             print(f"{msg} [source: {source}]")
             updated += 1
         except Exception as e:
-            print(f"[SKIP] {file_path} -> ошибка изменения времени: {e}")
+            print(f"[SKIP] {file_path} -> failed to update timestamps: {e}")
             skipped += 1
 
-    print("\nГотово:")
-    print(f"  Обработано: {processed}")
-    print(f"  Обновлено:  {updated}")
-    print(f"  Пропущено:  {skipped}")
+    print("\nDone:")
+    print(f"  Processed: {processed}")
+    print(f"  Updated:   {updated}")
+    print(f"  Skipped:   {skipped}")
 
 
 if __name__ == "__main__":

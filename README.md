@@ -1,21 +1,21 @@
 # exif-touch
 
-`exif-touch` — небольшая CLI-утилита на Python, которая выставляет время файла по дате съёмки из метаданных через `exiftool`.
+`exif-touch` is a small Python CLI utility that sets file timestamps from capture dates stored in metadata via `exiftool`.
 
-Подходит для фото и видеоархивов, когда файловая дата сбилась после копирования, выгрузки из мессенджеров или переноса между устройствами.
+It is useful for photo and video archives when file dates were changed by copying, exporting from messaging apps, or moving files between devices.
 
-## Что умеет
+## Features
 
-- ищет дату съёмки в EXIF/QuickTime-метаданных через `exiftool`
-- обновляет timestamps файлов в каталоге
-- умеет обходить вложенные папки рекурсивно
-- поддерживает режим проверки без записи через `--dry-run`
-- на Windows меняет `creation time`, `atime` и `mtime`
-- на Linux/macOS переносимо меняет `atime` и `mtime`
+- reads capture dates from EXIF and QuickTime metadata via `exiftool`
+- updates file timestamps in a directory
+- supports recursive directory traversal
+- includes a `--dry-run` mode for previewing changes without writing
+- updates `creation time`, `atime`, and `mtime` on Windows
+- updates `atime` and `mtime` portably on Linux and macOS
 
-## Поддерживаемые расширения
+## Supported extensions
 
-По умолчанию обрабатываются:
+Processed by default:
 
 - `jpg`, `jpeg`
 - `tif`, `tiff`
@@ -24,90 +24,67 @@
 - `heic`, `heif`
 - `mov`
 
-Для попытки обработки любых файлов используйте флаг `--all-files`.
+Use `--all-files` if you want to try processing every file type.
 
-## Требования
+## Requirements
 
 - Python 3.10+
-- `exiftool` в `PATH`
+- `exiftool` available in `PATH`
 
-Установка `exiftool` на Debian/Ubuntu:
+Install `exiftool` on Debian or Ubuntu:
 
 ```bash
 sudo apt install -y libimage-exiftool-perl
 ```
 
-## Быстрый старт
+## Quick start
 
-Запуск напрямую:
+Run directly:
 
 ```bash
 python3 exif_touch.py /path/to/media
 ```
 
-Рекурсивный обход:
+Scan recursively:
 
 ```bash
 python3 exif_touch.py -r /path/to/media
 ```
 
-Предпросмотр без записи:
+Preview without writing:
 
 ```bash
 python3 exif_touch.py -r --dry-run /path/to/media
 ```
 
-Установка как утилиты из локального репозитория:
+Install from the local repository:
 
 ```bash
 python3 -m pip install .
 ```
 
-После публикации на GitHub можно будет ставить и так:
+Install directly from GitHub:
 
 ```bash
 python3 -m pip install "git+https://github.com/<user>/<repo>.git"
 ```
 
-## Публикация на GitHub
-
-1. Создайте пустой репозиторий на GitHub без `README`, `.gitignore` и лицензии.
-2. Привяжите локальный репозиторий:
-
-```bash
-git remote add origin git@github.com:<user>/<repo>.git
-```
-
-Или через HTTPS:
-
-```bash
-git remote add origin https://github.com/<user>/<repo>.git
-```
-
-3. Отправьте текущую ветку:
-
-```bash
-git push -u origin main
-```
-
-После первого `push` workflow из `.github/workflows/ci.yml` начнет автоматически проверять проект на `push` и `pull request`.
-
-## Использование
+## Usage
 
 ```text
 usage: exif_touch.py [-h] [-r] [--dry-run] [--all-files] [directory]
 ```
 
-Аргументы:
+Arguments:
 
-- `directory` — каталог с файлами, по умолчанию текущий
-- `-r`, `--recursive` — обходить подкаталоги рекурсивно
-- `--dry-run` — только показать изменения без записи
-- `--all-files` — пробовать читать дату у всех файлов, а не только у известных расширений
+- `directory` — directory with media files, defaults to the current directory
+- `-r`, `--recursive` — scan subdirectories recursively
+- `--dry-run` — show planned changes without modifying files
+- `--all-files` — try every file, not only known media extensions
 
-## Откуда берётся дата
+## Date source
 
-Утилита по очереди проверяет несколько стандартных тегов, включая:
+The utility checks several standard tags in order, including:
 
 - `DateTimeOriginal`
 - `SubSecDateTimeOriginal`
@@ -119,12 +96,12 @@ usage: exif_touch.py [-h] [-r] [--dry-run] [--all-files] [directory]
 - `ModifyDate`
 - `FileModifyDate`
 
-## Ограничения
+## Limitations
 
-- если `exiftool` не установлен, утилита только сообщит об этом и завершится
-- на Unix-подобных системах переносимо меняются только `atime` и `mtime`
-- не у всех файлов есть корректная дата съёмки в метаданных, такие файлы будут пропущены
+- if `exiftool` is not installed, the utility reports the problem and exits
+- on Unix-like systems, only `atime` and `mtime` are changed portably
+- some files do not contain a valid capture date in metadata and will be skipped
 
-## Лицензия
+## License
 
-Проект распространяется по лицензии MIT. См. файл `LICENSE`.
+This project is distributed under the MIT License. See `LICENSE`.
