@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -225,18 +226,83 @@ def set_windows_all_times(file_path: Path, dt: datetime) -> None:
         CloseHandle(handle)
 
 
+def format_exiftool_datetime(dt: datetime) -> str:
+    if dt.tzinfo is None or dt.utcoffset() is None:
+        return dt.strftime("%Y:%m:%d %H:%M:%S")
+
+    offset = dt.strftime("%z")
+    offset = offset[:3] + ":" + offset[3:]
+    return dt.strftime("%Y:%m:%d %H:%M:%S") + offset
+
+
+def has_macos_setfile() -> bool:
+    return shutil.which("setfile") is not None
+
+
+def set_macos_creation_time(file_path: Path, dt: datetime) -> None:
+    cmd = [
+        "exiftool",
+        "-overwrite_original",
+        f"-FileCreateDate={format_exiftool_datetime(dt)}",
+        str(file_path),
+    ]
+
+    try:
+        subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except subprocess.CalledProcessError as e:
+        details = (e.stderr or e.stdout or "").strip()
+        if details:
+            raise OSError(f"exiftool failed to set FileCreateDate: {details}") from e
+        raise OSError("exiftool failed to set FileCreateDate") from e
+
+
 def set_file_times(file_path: Path, dt: datetime, dry_run: bool = False) -> str:
     if dry_run:
         if os.name == "nt":
             return f"[DRY-RUN] {file_path} -> {dt.isoformat(sep=' ')} (creation/atime/mtime)"
+        if sys.platform == "darwin":
+            if has_macos_setfile():
+                return (
+                    f"[DRY-RUN] {file_path} -> {dt.isoformat(sep=' ')} "
+                    "(creation via exiftool + atime/mtime)"
+                )
+            return (
+                f"[DRY-RUN] {file_path} -> {dt.isoformat(sep=' ')} "
+                "(atime/mtime only; install setfile for macOS creation time)"
+            )
         return f"[DRY-RUN] {file_path} -> {dt.isoformat(sep=' ')} (atime/mtime only)"
 
     if os.name == "nt":
         set_windows_all_times(file_path, dt)
         return f"[OK] {file_path} -> {dt.isoformat(sep=' ')} (creation/atime/mtime)"
 
+    creation_note = ""
+    if sys.platform == "darwin":
+        if has_macos_setfile():
+            try:
+                set_macos_creation_time(file_path, dt)
+                creation_note = "creation via exiftool + "
+            except Exception as e:
+                creation_note = f"creation skipped ({e}); "
+        else:
+            creation_note = "creation skipped (setfile not found); "
+
     ts = dt.timestamp()
     os.utime(file_path, (ts, ts))
+
+    if sys.platform == "darwin":
+        return (
+            f"[OK] {file_path} -> {dt.isoformat(sep=' ')} "
+            f"({creation_note}atime/mtime)"
+        )
+
     return f"[OK] {file_path} -> {dt.isoformat(sep=' ')} (atime/mtime only)"
 
 
@@ -318,7 +384,10 @@ def main() -> None:
     if shutil.which("exiftool") is None:
         print("Error: exiftool was not found in PATH.")
         print("Install it, for example:")
-        print("  sudo apt install -y libimage-exiftool-perl")
+        if sys.platform == "darwin":
+            print("  Install the ExifTool MacOS package from https://exiftool.org/")
+        else:
+            print("  sudo apt install -y libimage-exiftool-perl")
         return
 
     print(f"Working directory: {directory.resolve()}")
@@ -328,7 +397,14 @@ def main() -> None:
         print("[INFO] Some network mounts, including AFP shares opened via file managers,")
         print("[INFO] do not support changing file timestamps with os.utime().")
 
-    if os.name != "nt":
+    if sys.platform == "darwin":
+        print("[INFO] On macOS, atime/mtime are updated with os.utime().")
+        if has_macos_setfile():
+            print("[INFO] macOS creation time will also be updated via exiftool/setfile.")
+        else:
+            print("[INFO] macOS creation time requires Apple's setfile utility.")
+            print("[INFO] Install it with: xcode-select --install")
+    elif os.name != "nt":
         print("[INFO] Only atime/mtime can be updated portably on this platform.")
         print("[INFO] Real creation time is only updated by the script on Windows.")
 
