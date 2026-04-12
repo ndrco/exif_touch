@@ -103,6 +103,7 @@ The utility checks several standard tags in order, including:
 
 - if `exiftool` is not installed, the utility reports the problem and exits
 - on Unix-like systems, only `atime` and `mtime` are changed portably
+- some network-mounted filesystems exposed through GVFS/FUSE, such as AFP shares mounted by a desktop file manager, may not support timestamp updates via `os.utime()`
 - some files do not contain a valid capture date in metadata and will be skipped
 
 ## License

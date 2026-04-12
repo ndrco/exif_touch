@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 import re
@@ -239,6 +240,28 @@ def set_file_times(file_path: Path, dt: datetime, dry_run: bool = False) -> str:
     return f"[OK] {file_path} -> {dt.isoformat(sep=' ')} (atime/mtime only)"
 
 
+def explain_update_error(file_path: Path, error: Exception) -> str:
+    path_str = str(file_path)
+
+    if isinstance(error, OSError):
+        if error.errno == errno.EROFS:
+            return f"{error} (filesystem is mounted read-only)"
+
+        if error.errno == errno.EACCES:
+            return f"{error} (permission denied while updating file times)"
+
+        if error.errno == errno.EOPNOTSUPP:
+            if "/gvfs/" in path_str:
+                return (
+                    f"{error} (GVFS/network mounts such as AFP/SMB may not support "
+                    "updating timestamps via os.utime; copy files locally or use a "
+                    "mount method that supports utime)"
+                )
+            return f"{error} (filesystem does not support updating timestamps)"
+
+    return str(error)
+
+
 def iter_files(directory: Path, recursive: bool):
     if recursive:
         files = (p for p in directory.rglob("*") if p.is_file())
@@ -300,6 +323,11 @@ def main() -> None:
 
     print(f"Working directory: {directory.resolve()}")
 
+    if "/gvfs/" in str(directory):
+        print("[INFO] The target directory is inside a GVFS mount.")
+        print("[INFO] Some network mounts, including AFP shares opened via file managers,")
+        print("[INFO] do not support changing file timestamps with os.utime().")
+
     if os.name != "nt":
         print("[INFO] Only atime/mtime can be updated portably on this platform.")
         print("[INFO] Real creation time is only updated by the script on Windows.")
@@ -325,7 +353,10 @@ def main() -> None:
             print(f"{msg} [source: {source}]")
             updated += 1
         except Exception as e:
-            print(f"[SKIP] {file_path} -> failed to update timestamps: {e}")
+            print(
+                f"[SKIP] {file_path} -> failed to update timestamps: "
+                f"{explain_update_error(file_path, e)}"
+            )
             skipped += 1
 
     print("\nDone:")
